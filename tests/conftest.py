@@ -25,3 +25,18 @@ def sml_repo_dir():
     dimension, a plain metric, a ratio metric_calc, an arbitrary-MDX metric_calc,
     and an unsupported (row_security) object type."""
     return FIXTURES / "sml"
+
+
+@pytest.fixture
+def retail_model():
+    """The bundled multi-fact retail model: two fact tables over five conformed
+    dimensions, which exercises emitter behaviour the single-fact TPC-DS fixture
+    cannot (per-fact explores, chasm-trap avoidance)."""
+    document = load_ossie_document(
+        Path(__file__).resolve().parent.parent
+        / "src"
+        / "lexis_api"
+        / "sample_data"
+        / "retail_analytics_model.yaml"
+    )
+    return ResolvedModel.build(document.semantic_model[0])
