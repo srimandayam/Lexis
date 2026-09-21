@@ -439,7 +439,9 @@ declared direction (see "Explore generation" above).
   branch and run the LookML validator (optionally `spectacles` for SQL
   validation). It cannot run in CI: `lkml` proves every file parses, but only
   Looker proves it runs. Treat the target as provisional until it passes once.
-- **The TypeScript changes are uncompiled.** The machine this was developed on
-  has no Node installed, so `tsc --noEmit` could not be run. The edits are small
-  and strict-safe by inspection, but no compiler has confirmed that.
 - **Phase 4** (LookML → Ossie import) remains optional and unstarted.
+
+The frontend changes are verified: `tsc --noEmit`, `npm run build` and
+`npm run lint` all pass clean. (`tsconfig.app.json` does not set `"strict": true`,
+so the type checking that ran is the project's own configuration, not full strict
+mode - enabling that project-wide is a separate change.)
