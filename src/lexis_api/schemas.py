@@ -25,6 +25,7 @@ TARGET = Literal[
     "mcp",
     "snowflake_semantic_view",
     "sml",
+    "lookml",
 ]
 
 TIME_GRAIN = Literal["year", "quarter", "month", "day"]
@@ -112,12 +113,18 @@ class TranspileIn(BaseModel):
     target: TARGET
     metric: str | None = None
     group_by: list[str] | None = None
+    # Per-target settings Ossie itself doesn't model - currently only `lookml`,
+    # which needs a Looker connection name and picks a SQL dialect for the
+    # expressions it embeds. Validated against dispatch.TARGET_OPTIONS, so an
+    # option a target doesn't accept is a 422 rather than a silent no-op.
+    options: dict[str, str] | None = None
 
 
 class TranspileOut(BaseModel):
-    # `sml` is the one multi-file target - one YAML file per SML object - so
-    # `content` is a `dict[str, str]` (relative filename -> content) there; every
-    # other target still returns a single `str`. Mirrors dispatch.TranspileResult.
+    # `sml` and `lookml` are the multi-file targets - one YAML file per SML
+    # object, and a views/ + model file project respectively - so `content` is a
+    # `dict[str, str]` (relative filename -> content) there; every other target
+    # still returns a single `str`. Mirrors dispatch.TranspileResult.
     content: str | dict[str, str]
     warnings: list[str]
 

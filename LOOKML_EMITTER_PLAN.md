@@ -415,3 +415,31 @@ Explicitly out of scope until Phases 1–3 land.
 | 2 | ai_context, golden files, UI input, README | ~150 LOC + docs |
 | 3 | manual Looker validation + fixes | 1 session against a real instance |
 | 4 | LookML → Ossie import (optional) | comparable to `sml/parse.py` (~550 LOC) |
+
+## Status
+
+**Phases 1 and 2 are implemented.** The emitter
+(`src/lexis/transpilers/lookml/`), the `options` plumbing on
+`dispatch.transpile()`, the CLI flags (`--lookml-connection` /
+`--lookml-dialect`), the API (`"lookml"` in the `TARGET` literal,
+`TranspileIn.options`, passed through `routers/transpile.py`), the frontend
+(`Target` union, `ALL_TARGETS`, and a connection input in `TranspileView.tsx`
+shown only for `lookml`), and the README all landed. 53 tests cover it.
+
+One design decision changed during implementation, and this document has been
+updated to match: the explore builder originally traversed relationships in both
+directions, emitting `one_to_many` joins when it walked an edge backwards. That
+turned out to pull a *second fact table* into an explore through a conformed
+dimension — a chasm trap. Traversal is now restricted to each relationship's
+declared direction (see "Explore generation" above).
+
+**Still outstanding:**
+
+- **Phase 3, the manual Looker gate.** Load an emitted project into a Looker dev
+  branch and run the LookML validator (optionally `spectacles` for SQL
+  validation). It cannot run in CI: `lkml` proves every file parses, but only
+  Looker proves it runs. Treat the target as provisional until it passes once.
+- **The TypeScript changes are uncompiled.** The machine this was developed on
+  has no Node installed, so `tsc --noEmit` could not be run. The edits are small
+  and strict-safe by inspection, but no compiler has confirmed that.
+- **Phase 4** (LookML → Ossie import) remains optional and unstarted.

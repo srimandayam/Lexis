@@ -76,3 +76,49 @@ def test_sml_target_returns_a_file_map(client_as, model_id):
     assert isinstance(content, dict)
     assert "catalog.yml" in content
     assert "datasets/store_sales.yml" in content
+
+
+def test_lookml_target_returns_a_file_tree(client_as, model_id):
+    resp = client_as("viewer").post(
+        f"/api/models/{model_id}/transpile", json={"target": "lookml"}
+    )
+    assert resp.status_code == 200
+    content = resp.json()["content"]
+    assert isinstance(content, dict)
+    assert "tpcds_retail_model.model.lkml" in content
+    assert any(name.startswith("views/") for name in content)
+
+
+def test_lookml_options_reach_the_emitter(client_as, model_id):
+    resp = client_as("viewer").post(
+        f"/api/models/{model_id}/transpile",
+        json={"target": "lookml", "options": {"connection": "warehouse_a"}},
+    )
+    assert resp.status_code == 200
+    assert 'connection: "warehouse_a"' in resp.json()["content"]["tpcds_retail_model.model.lkml"]
+
+
+def test_lookml_without_options_warns_about_the_placeholder(client_as, model_id):
+    resp = client_as("viewer").post(
+        f"/api/models/{model_id}/transpile", json={"target": "lookml"}
+    )
+    assert resp.status_code == 200
+    assert any("lexis_connection" in w for w in resp.json()["warnings"])
+
+
+def test_unknown_option_is_422(client_as, model_id):
+    """dispatch raises ValueError, which main.py's global handler maps to 422."""
+    resp = client_as("viewer").post(
+        f"/api/models/{model_id}/transpile",
+        json={"target": "lookml", "options": {"conection": "typo"}},
+    )
+    assert resp.status_code == 422
+    assert "does not accept option" in resp.json()["detail"]
+
+
+def test_option_on_a_target_that_accepts_none_is_422(client_as, model_id):
+    resp = client_as("viewer").post(
+        f"/api/models/{model_id}/transpile",
+        json={"target": "cube", "options": {"connection": "x"}},
+    )
+    assert resp.status_code == 422

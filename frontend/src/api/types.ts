@@ -85,21 +85,35 @@ export type Target =
   | "dbt"
   | "mcp"
   | "snowflake_semantic_view"
-  | "sml";
+  | "sml"
+  | "lookml";
 
 export const SQL_TARGETS: Target[] = ["duckdb", "postgres", "bigquery", "databricks", "snowflake"];
-export const ALL_TARGETS: Target[] = [...SQL_TARGETS, "cube", "dbt", "mcp", "snowflake_semantic_view", "sml"];
+export const ALL_TARGETS: Target[] = [
+  ...SQL_TARGETS,
+  "cube",
+  "dbt",
+  "mcp",
+  "snowflake_semantic_view",
+  "sml",
+  "lookml",
+];
 
 export interface TranspileIn {
   target: Target;
   metric?: string | null;
   group_by?: string[] | null;
+  // Per-target settings Ossie itself doesn't model. Only `lookml` takes any:
+  // `connection` (the Looker connection name) and `dialect`. Sending an option
+  // a target doesn't accept is a 422, not a silent no-op.
+  options?: Record<string, string> | null;
 }
 
 export interface TranspileOut {
-  // `sml` is the one multi-file target - one YAML file per SML object - so
-  // `content` is a `Record<string, string>` (relative filename -> content) there;
-  // every other target still returns a single `string`.
+  // `sml` and `lookml` are the multi-file targets - one YAML file per SML
+  // object, and a views/ + model file project respectively - so `content` is a
+  // `Record<string, string>` (relative filename -> content) there; every other
+  // target still returns a single `string`.
   content: string | Record<string, string>;
   warnings: string[];
 }

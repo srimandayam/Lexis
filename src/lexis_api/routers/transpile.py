@@ -1,4 +1,4 @@
-"""Transpile a persisted model to any of the existing 8 targets."""
+"""Transpile a persisted model to any of the supported targets."""
 
 from fastapi import APIRouter, Depends
 
@@ -19,5 +19,9 @@ def transpile_model(
 ) -> TranspileOut:
     document = parse_ossie_yaml(record.raw_yaml)
     model = ResolvedModel.build(document.semantic_model[0])
-    result = dispatch_transpile(document, model, body.target, body.metric, body.group_by)
+    # A missing metric on a SQL target, or an option the target doesn't accept,
+    # raises ValueError - already mapped to a 422 by main.py's global handler.
+    result = dispatch_transpile(
+        document, model, body.target, body.metric, body.group_by, body.options
+    )
     return TranspileOut(content=result.content, warnings=result.warnings)

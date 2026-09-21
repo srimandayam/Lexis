@@ -9,8 +9,10 @@ export function TranspileView({ model }: { model: ModelDetailOut }) {
   const [target, setTarget] = useState<Target>("duckdb");
   const [metric, setMetric] = useState(model.metrics[0]?.name ?? "");
   const [groupBy, setGroupBy] = useState<string[]>([]);
+  const [lookmlConnection, setLookmlConnection] = useState("");
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const isSql = (SQL_TARGETS as string[]).includes(target);
+  const isLookml = target === "lookml";
   const refs = fieldRefs(model);
 
   const mutation = useMutation({
@@ -19,6 +21,12 @@ export function TranspileView({ model }: { model: ModelDetailOut }) {
         target,
         metric: isSql ? metric : undefined,
         group_by: isSql && groupBy.length > 0 ? groupBy : undefined,
+        // Omitted when blank so the emitter falls back to its placeholder and
+        // warns, rather than being handed an empty connection name (a 422).
+        options:
+          isLookml && lookmlConnection.trim() !== ""
+            ? { connection: lookmlConnection.trim() }
+            : undefined,
       }),
     onSuccess: (data) => {
       setActiveFile(typeof data.content === "string" ? null : (Object.keys(data.content)[0] ?? null));
@@ -40,6 +48,17 @@ export function TranspileView({ model }: { model: ModelDetailOut }) {
             ))}
           </select>
         </label>
+
+        {isLookml && (
+          <label>
+            Looker connection{" "}
+            <input
+              value={lookmlConnection}
+              onChange={(e) => setLookmlConnection(e.target.value)}
+              placeholder="lexis_connection"
+            />
+          </label>
+        )}
 
         {isSql && (
           <label>

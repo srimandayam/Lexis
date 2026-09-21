@@ -75,8 +75,9 @@ FROM tpcds.public.store_sales AS "store_sales"
 ```
 
 Other targets: `postgres`, `bigquery`, `databricks`, `snowflake` (all take `--metric`,
-and an optional repeatable `--group-by dataset.field`), plus `cube`, `dbt`, `mcp`, and
-`snowflake_semantic_view` (whole-model outputs, no `--metric` needed):
+and an optional repeatable `--group-by dataset.field`), plus `cube`, `dbt`, `mcp`,
+`snowflake_semantic_view`, `sml`, and `lookml` (whole-model outputs, no `--metric`
+needed):
 
 ```bash
 lexis transpile tests/fixtures/tpcds_semantic_model.yaml --target mcp
@@ -95,7 +96,26 @@ SYNONYMS`/`COMMENT`:
 lexis transpile tests/fixtures/tpcds_semantic_model.yaml --target snowflake_semantic_view
 ```
 
-Add `--out <file>` to write to a file instead of stdout.
+`lookml` emits a whole Looker project — one `views/<dataset>.view.lkml` per dataset
+plus a `<model>.model.lkml` carrying the connection, `include`, and explores. Ossie
+fields become dimensions (temporal ones become `dimension_group`s), metrics become
+typed measures where they decompose to a plain aggregate, and each fact table gets its
+own explore joining its dimensions `many_to_one`:
+
+```bash
+lexis transpile tests/fixtures/tpcds_semantic_model.yaml \
+  --target lookml --lookml-connection my_warehouse --out ./lookml_project
+```
+
+Ossie doesn't model a Looker connection, so `--lookml-connection` sets the name the
+model file declares; without it the project is emitted with a placeholder and a warning.
+`--lookml-dialect` (default `ANSI_SQL`) picks which dialect's expressions get embedded.
+The emitter warns wherever LookML can't represent something faithfully — composite
+primary keys, metrics that don't decompose to a plain aggregate, `unique_keys` — so
+review the warnings before deploying a generated project.
+
+Add `--out <file>` to write to a file instead of stdout (or, for the multi-file `sml`
+and `lookml` targets, a directory).
 
 A bundled demo dataset (the same data the web UI's "Demo dataset" run mode uses
 in-memory) can be exported to a real `.duckdb` file, handy as a seed file for the

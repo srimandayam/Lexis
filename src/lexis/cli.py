@@ -34,16 +34,48 @@ def main() -> None:
     "--out",
     type=click.Path(),
     help="Write output to a file (single-file targets) or a directory (multi-file "
-    "targets, e.g. sml) instead of stdout",
+    "targets, e.g. sml, lookml) instead of stdout",
 )
-def transpile(model_path: str, target: str, metric: str | None, group_by: tuple[str, ...], out: str | None) -> None:
+@click.option(
+    "--lookml-connection",
+    metavar="NAME",
+    help="Looker connection name for the model file (lookml target only). Ossie "
+    "does not model a connection, so without this the project is emitted with a "
+    "placeholder Looker cannot run queries against.",
+)
+@click.option(
+    "--lookml-dialect",
+    metavar="DIALECT",
+    help="Ossie dialect whose expressions the LookML project embeds, e.g. "
+    "SNOWFLAKE or BIGQUERY (lookml target only). Defaults to ANSI_SQL.",
+)
+def transpile(
+    model_path: str,
+    target: str,
+    metric: str | None,
+    group_by: tuple[str, ...],
+    out: str | None,
+    lookml_connection: str | None,
+    lookml_dialect: str | None,
+) -> None:
     """Parse an Ossie model and emit it in the given TARGET format."""
     document = load_ossie_document(model_path)
     semantic_model = document.semantic_model[0]
     model = ResolvedModel.build(semantic_model)
 
+    # Only send options the caller actually set, so dispatch's unknown-option
+    # check still rejects `--lookml-connection` paired with a non-lookml target
+    # rather than silently ignoring it.
+    options = {
+        key: value
+        for key, value in (("connection", lookml_connection), ("dialect", lookml_dialect))
+        if value is not None
+    }
+
     try:
-        result = dispatch_transpile(document, model, target, metric, list(group_by) or None)
+        result = dispatch_transpile(
+            document, model, target, metric, list(group_by) or None, options or None
+        )
     except ValueError as exc:
         raise click.UsageError(str(exc))
 

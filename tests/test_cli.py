@@ -68,3 +68,91 @@ def test_export_demo_dataset_force_overwrites(runner, tmp_path):
 
     con = duckdb.connect(str(out_path), read_only=True)
     con.close()
+
+
+def test_transpile_lookml_writes_a_project_tree(runner, tmp_path):
+    out_dir = tmp_path / "lookml"
+    result = runner.invoke(
+        main,
+        [
+            "transpile",
+            "tests/fixtures/tpcds_semantic_model.yaml",
+            "--target",
+            "lookml",
+            "--lookml-connection",
+            "tpcds_warehouse",
+            "--out",
+            str(out_dir),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    model_file = out_dir / "tpcds_retail_model.model.lkml"
+    assert model_file.exists()
+    assert 'connection: "tpcds_warehouse"' in model_file.read_text()
+    assert (out_dir / "views" / "store_sales.view.lkml").exists()
+
+
+def test_transpile_lookml_without_a_connection_uses_the_placeholder(runner, tmp_path):
+    out_dir = tmp_path / "lookml"
+    result = runner.invoke(
+        main,
+        ["transpile", "tests/fixtures/tpcds_semantic_model.yaml", "--target", "lookml", "--out", str(out_dir)],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert 'connection: "lexis_connection"' in (out_dir / "tpcds_retail_model.model.lkml").read_text()
+    assert "lexis_connection" in result.output  # the warning, on stderr
+
+
+def test_transpile_lookml_dialect_flag_is_passed_through(runner, tmp_path):
+    out_dir = tmp_path / "lookml"
+    result = runner.invoke(
+        main,
+        [
+            "transpile",
+            "tests/fixtures/tpcds_semantic_model.yaml",
+            "--target",
+            "lookml",
+            "--lookml-dialect",
+            "bigquery",
+            "--out",
+            str(out_dir),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "CONCAT(" in (out_dir / "views" / "store_sales.view.lkml").read_text()
+
+
+def test_transpile_rejects_an_unknown_lookml_dialect(runner):
+    result = runner.invoke(
+        main,
+        [
+            "transpile",
+            "tests/fixtures/tpcds_semantic_model.yaml",
+            "--target",
+            "lookml",
+            "--lookml-dialect",
+            "klingon",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "unknown lookml dialect" in result.output
+
+
+def test_lookml_flag_on_another_target_is_an_error_not_a_silent_no_op(runner):
+    """A flag that can't apply should fail loudly rather than be ignored."""
+    result = runner.invoke(
+        main,
+        [
+            "transpile",
+            "tests/fixtures/tpcds_semantic_model.yaml",
+            "--target",
+            "cube",
+            "--lookml-connection",
+            "x",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "does not accept option" in result.output
